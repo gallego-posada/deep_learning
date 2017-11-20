@@ -105,7 +105,6 @@ def train():
                      weight_initializer = WEIGHT_INITIALIZATION_DICT[FLAGS.weight_init](FLAGS.weight_init_scale),
                      weight_regularizer = WEIGHT_REGULARIZER_DICT[FLAGS.weight_reg](FLAGS.weight_reg_strength) if WEIGHT_REGULARIZER_DICT[FLAGS.weight_reg] is not None else None)
 
-
   # Setup placeholders for input data and labels
   with tf.name_scope('input'):
       x = tf.placeholder(tf.float32, [None, 32, 32, 3], name='x-input')
@@ -113,11 +112,6 @@ def train():
 
   keep_prob = tf.placeholder(tf.float32, name = 'keep_prob')
   tf.summary.scalar('keep_prob', keep_prob)
-
-  # # Put batch first
-  # with tf.name_scope('input_reshape'):
-  #     image_shaped_input = tf.reshape(x, [-1] + conv_net.input_shape)
-  #     tf.summary.image('input', image_shaped_input, 10)
 
   #Define global step and optimizer
   global_step = tf.Variable(0, trainable = False, name = 'global_step')
@@ -149,15 +143,27 @@ def train():
   local_init_op = tf.local_variables_initializer()
   sess.run(fetches=[init_op, local_init_op])
 
+  aug_gen = tf.keras.preprocessing.image.ImageDataGenerator(
+                    rotation_range = 10,
+                    shear_range = 0.1,
+                    zoom_range = 0.1,
+                    fill_mode = 'nearest',
+                    data_format = 'channels_last')
+
+  cifar10_aug = aug_gen.flow(x = cifar10.train.images,
+                             y = cifar10.train.labels,
+                             batch_size = batch_size)
+
   # Load test data once instead of every time
   x_test, y_test = cifar10.test.images, cifar10.test.labels
+
 
   tr_stats = []
   test_stats = []
 
   for tr_step in range(FLAGS.max_steps):
        # Get next batch
-       x_tr, y_tr = cifar10.train.next_batch(FLAGS.batch_size)
+       x_tr, y_tr = cifar10_aug.next()
 
        tr_feed = {x: x_tr, y: y_tr, keep_prob: 1. - FLAGS.dropout_rate}
        fetches = [train_op, loss_op, accuracy_op]

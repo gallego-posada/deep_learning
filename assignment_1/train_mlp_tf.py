@@ -121,7 +121,7 @@ def train():
   keep_prob = tf.placeholder(tf.float32, name = 'keep_prob')
   tf.summary.scalar('keep_prob', keep_prob)
 
-  # Reshape for MLP architecture
+  # TF image summaries
   with tf.name_scope('input_reshape'):
       image_shaped_input = tf.reshape(x, [-1] + mlp.input_shape)
       tf.summary.image('input', image_shaped_input, 10)
