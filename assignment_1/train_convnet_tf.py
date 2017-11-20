@@ -152,7 +152,7 @@ def train():
 
   cifar10_aug = aug_gen.flow(x = cifar10.train.images,
                              y = cifar10.train.labels,
-                             batch_size = batch_size)
+                             batch_size = FLAGS.batch_size)
 
   # Load test data once instead of every time
   x_test, y_test = cifar10.test.images, cifar10.test.labels

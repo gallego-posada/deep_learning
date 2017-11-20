@@ -10,7 +10,6 @@ import numpy as np
 import os
 import pickle
 
-
 from tensorflow.contrib.learn.python.learn.datasets import base
 
 # Default paths for downloading CIFAR10 data
