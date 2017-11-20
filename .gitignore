@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+assignment_1/logs
+assignment_1/cifar10
+assignment_1/saved_models
+assignment_1/checkpoints
+assignment_1/pickles
+
 # C extensions
 *.so
 
