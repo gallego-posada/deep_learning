@@ -98,12 +98,19 @@ def train():
 
   # Create session
   tf.reset_default_graph()
-  sess = tf.Session()
+  gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.99, allow_growth=True)
+  sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+
+  #Local
+  #tf.reset_default_graph()
+  #sess = tf.Session()
 
   # Create MLP object
   conv_net = ConvNet(n_classes = 10,
                      weight_initializer = WEIGHT_INITIALIZATION_DICT[FLAGS.weight_init](FLAGS.weight_init_scale),
                      weight_regularizer = WEIGHT_REGULARIZER_DICT[FLAGS.weight_reg](FLAGS.weight_reg_strength) if WEIGHT_REGULARIZER_DICT[FLAGS.weight_reg] is not None else None)
+
+
 
   # Setup placeholders for input data and labels
   with tf.name_scope('input'):
@@ -124,6 +131,8 @@ def train():
   train_op = conv_net.train_step(loss_op, {'optimizer': optimizer, 'global_step': global_step})
   conf_mat_op = conv_net.confusion_matrix(logits_op, y)
   summary_op = tf.summary.merge_all()
+
+  return None
 
   save_model = FLAGS.checkpoint_dir is not None
   write_log = FLAGS.log_dir is not None

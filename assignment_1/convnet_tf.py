@@ -61,8 +61,6 @@ class ConvNet(object):
 
           activs = tf.nn.relu(conv, name = layer_name + '_act')
 
-          print("AAAAAAAA", x.shape, activs.shape)
-
           pool = tf.layers.max_pooling2d(inputs = activs,
                                          pool_size = (3, 3),
                                          strides = 2,
@@ -76,10 +74,12 @@ class ConvNet(object):
 
           with tf.name_scope('weights'):
               w = tf.get_default_graph().get_tensor_by_name(os.path.split(conv.name)[0] + '/kernel:0')
+              print(os.path.split(conv.name)[0] + '/kernel:0', w.shape)
               self._variable_summaries(w)
 
           with tf.name_scope('biases'):
               b = tf.get_default_graph().get_tensor_by_name(os.path.split(conv.name)[0] + '/bias:0')
+              print(os.path.split(conv.name)[0] + '/bias:0', b.shape)
               self._variable_summaries(b)
 
 
@@ -106,10 +106,12 @@ class ConvNet(object):
 
           with tf.name_scope('weights'):
               w = tf.get_default_graph().get_tensor_by_name(os.path.split(fc.name)[0] + '/kernel:0')
+              print(os.path.split(fc.name)[0] + '/kernel:0', w.shape)
               self._variable_summaries(w)
 
           with tf.name_scope('biases'):
               b = tf.get_default_graph().get_tensor_by_name(os.path.split(fc.name)[0] + '/bias:0')
+              print(os.path.split(fc.name)[0] + '/bias:0', b.shape)
               self._variable_summaries(b)
 
           with tf.name_scope('dropout'):
