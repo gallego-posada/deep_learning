@@ -57,6 +57,7 @@ class ConvNet(object):
                                   bias_initializer = self.bias_initializer,
                                   kernel_regularizer = self.weight_regularizer,
                                   bias_regularizer = None,
+                                  data_format ='channels_last',
                                   name = layer_name + '_conv')
 
           activs = tf.nn.relu(conv, name = layer_name + '_act')
@@ -162,6 +163,7 @@ class ConvNet(object):
     fc_3 = self._fc_layer(fc_2, 10, "fc_3", keep_prob, act = tf.identity)
 
     logits = fc_3
+    print(pool_1.shape, pool_2.shape, flat.shape, fc_1.shape, fc_2.shape, fc_3.shape)
     ########################
     # END OF YOUR CODE    #
     ########################

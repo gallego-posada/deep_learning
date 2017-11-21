@@ -13,7 +13,7 @@ import pickle
 
 
 LEARNING_RATE_DEFAULT = 1e-4
-BATCH_SIZE_DEFAULT = 128
+BATCH_SIZE_DEFAULT = 64
 MAX_STEPS_DEFAULT = 15000
 EVAL_FREQ_DEFAULT = 1000
 CHECKPOINT_FREQ_DEFAULT = 5000
@@ -98,12 +98,7 @@ def train():
 
   # Create session
   tf.reset_default_graph()
-  gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.99, allow_growth=True)
-  sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-
-  #Local
-  #tf.reset_default_graph()
-  #sess = tf.Session()
+  sess = tf.Session()
 
   # Create MLP object
   conv_net = ConvNet(n_classes = 10,
@@ -131,8 +126,6 @@ def train():
   train_op = conv_net.train_step(loss_op, {'optimizer': optimizer, 'global_step': global_step})
   conf_mat_op = conv_net.confusion_matrix(logits_op, y)
   summary_op = tf.summary.merge_all()
-
-  return None
 
   save_model = FLAGS.checkpoint_dir is not None
   write_log = FLAGS.log_dir is not None
@@ -164,7 +157,7 @@ def train():
   #                            batch_size = FLAGS.batch_size)
 
   # Load test data once instead of every time
-  x_test, y_test = cifar10.test.images, cifar10.test.labels
+  #x_test, y_test = cifar10.test.images, cifar10.test.labels
 
 
   tr_stats = []
@@ -179,8 +172,8 @@ def train():
 
        # Run train step on training set
        if tr_step % FLAGS.print_freq == 0 and write_log:
-           fetches += [summary_op]
-           _, tr_loss, tr_accuracy, tr_summary = sess.run(fetches = fetches, feed_dict = tr_feed)
+           #fetches += [summary_op]
+           _, tr_loss, tr_accuracy = sess.run(fetches = fetches, feed_dict = tr_feed)
            train_log_writer.add_summary(tr_summary, tr_step)
        else:
            _, tr_loss, tr_accuracy = sess.run(fetches = fetches, feed_dict = tr_feed)
@@ -193,6 +186,7 @@ def train():
 
        # Test set evaluation
        if tr_step % FLAGS.eval_freq == 0 or tr_step == FLAGS.max_steps-1:
+           x_test, y_test = cifar10.test.next_batch(FLAGS.batch_size)
            test_feed = {x: x_test, y: y_test, keep_prob: 1.0}
            test_loss, test_accuracy, test_logits, test_confusion_matrix, test_summary = sess.run(
                 fetches = [loss_op, accuracy_op, logits_op, conf_mat_op, summary_op],
@@ -202,7 +196,7 @@ def train():
 
            test_stats += [[tr_step, test_loss, test_accuracy]]
 
-           #print('TEST - Loss:{:.4f}, Accuracy:{:.4f}'.format(test_loss, test_accuracy))
+           print('TEST - Loss:{:.4f}, Accuracy:{:.4f}'.format(test_loss, test_accuracy))
            #print('TEST - Conf Matrix \n {} \n'.format(test_confusion_matrix))
 
        # Save checkpoint model
