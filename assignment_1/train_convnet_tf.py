@@ -194,8 +194,8 @@ def train():
        if tr_step % FLAGS.eval_freq == 0 or tr_step == FLAGS.max_steps-1:
            x_test, y_test = cifar10.test.next_batch(FLAGS.batch_size)
            test_feed = {x: x_test, y: y_test, keep_prob: 1.0}
-           test_loss, test_accuracy, test_logits, test_confusion_matrix, test_summary = sess.run(
-                fetches = [loss_op, accuracy_op, logits_op, conf_mat_op, summary_op],
+           test_loss, test_accuracy, test_logits, test_confusion_matrix = sess.run(
+                fetches = [loss_op, accuracy_op, logits_op, conf_mat_op],
                 feed_dict = test_feed)
            if write_log:
                test_log_writer.add_summary(test_summary, tr_step)
@@ -214,7 +214,7 @@ def train():
 
        final_time = time.time()
        print("LOOP TIME: ", final_time - start_time)
-       
+
   # Once done with training, close writers
   if write_log:
         train_log_writer.close()
