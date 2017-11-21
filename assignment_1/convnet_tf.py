@@ -69,19 +69,19 @@ class ConvNet(object):
                                          data_format ='channels_last',
                                          name = layer_name + '_pool')
 
-          tf.summary.histogram('preactivations', conv)
-          tf.summary.histogram('activations', activs)
-          tf.summary.histogram('pooled', pool)
+          #tf.summary.histogram('preactivations', conv)
+          #tf.summary.histogram('activations', activs)
+          #tf.summary.histogram('pooled', pool)
 
-          with tf.name_scope('weights'):
-              w = tf.get_default_graph().get_tensor_by_name(os.path.split(conv.name)[0] + '/kernel:0')
-              print(os.path.split(conv.name)[0] + '/kernel:0', w.shape)
-              self._variable_summaries(w)
-
-          with tf.name_scope('biases'):
-              b = tf.get_default_graph().get_tensor_by_name(os.path.split(conv.name)[0] + '/bias:0')
-              print(os.path.split(conv.name)[0] + '/bias:0', b.shape)
-              self._variable_summaries(b)
+        #   with tf.name_scope('weights'):
+        #       w = tf.get_default_graph().get_tensor_by_name(os.path.split(conv.name)[0] + '/kernel:0')
+        #       print(os.path.split(conv.name)[0] + '/kernel:0', w.shape)
+        #       self._variable_summaries(w)
+          #
+        #   with tf.name_scope('biases'):
+        #       b = tf.get_default_graph().get_tensor_by_name(os.path.split(conv.name)[0] + '/bias:0')
+        #       print(os.path.split(conv.name)[0] + '/bias:0', b.shape)
+        #       self._variable_summaries(b)
 
 
       return pool
@@ -102,18 +102,18 @@ class ConvNet(object):
 
           activs = act(fc, name = layer_name + '_act')
 
-          tf.summary.histogram('preactivations', fc)
-          tf.summary.histogram('activations', activs)
-
-          with tf.name_scope('weights'):
-              w = tf.get_default_graph().get_tensor_by_name(os.path.split(fc.name)[0] + '/kernel:0')
-              print(os.path.split(fc.name)[0] + '/kernel:0', w.shape)
-              self._variable_summaries(w)
-
-          with tf.name_scope('biases'):
-              b = tf.get_default_graph().get_tensor_by_name(os.path.split(fc.name)[0] + '/bias:0')
-              print(os.path.split(fc.name)[0] + '/bias:0', b.shape)
-              self._variable_summaries(b)
+        #   tf.summary.histogram('preactivations', fc)
+        #   tf.summary.histogram('activations', activs)
+          #
+        #   with tf.name_scope('weights'):
+        #       w = tf.get_default_graph().get_tensor_by_name(os.path.split(fc.name)[0] + '/kernel:0')
+        #       print(os.path.split(fc.name)[0] + '/kernel:0', w.shape)
+        #       self._variable_summaries(w)
+          #
+        #   with tf.name_scope('biases'):
+        #       b = tf.get_default_graph().get_tensor_by_name(os.path.split(fc.name)[0] + '/bias:0')
+        #       print(os.path.split(fc.name)[0] + '/bias:0', b.shape)
+        #       self._variable_summaries(b)
 
           with tf.name_scope('dropout'):
               output = tf.nn.dropout(activs, keep_prob)

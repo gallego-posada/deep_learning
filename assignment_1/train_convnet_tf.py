@@ -6,6 +6,7 @@ import argparse
 import os
 import tensorflow as tf
 import numpy as np
+import time
 
 import cifar10_utils
 from convnet_tf import ConvNet
@@ -13,7 +14,7 @@ import pickle
 
 
 LEARNING_RATE_DEFAULT = 1e-4
-BATCH_SIZE_DEFAULT = 64
+BATCH_SIZE_DEFAULT = 128
 MAX_STEPS_DEFAULT = 15000
 EVAL_FREQ_DEFAULT = 1000
 CHECKPOINT_FREQ_DEFAULT = 5000
@@ -113,7 +114,7 @@ def train():
       y = tf.placeholder(tf.float32, [None, conv_net.n_classes], name='y-input')
 
   keep_prob = tf.placeholder(tf.float32, name = 'keep_prob')
-  tf.summary.scalar('keep_prob', keep_prob)
+  #tf.summary.scalar('keep_prob', keep_prob)
 
   #Define global step and optimizer
   global_step = tf.Variable(0, trainable = False, name = 'global_step')
@@ -125,10 +126,13 @@ def train():
   accuracy_op = conv_net.accuracy(logits_op, y)
   train_op = conv_net.train_step(loss_op, {'optimizer': optimizer, 'global_step': global_step})
   conf_mat_op = conv_net.confusion_matrix(logits_op, y)
-  summary_op = tf.summary.merge_all()
+  #summary_op = tf.summary.merge_all()
 
   save_model = FLAGS.checkpoint_dir is not None
   write_log = FLAGS.log_dir is not None
+
+  save_model = False
+  write_log = False
 
   # If enabled, set up log writers
   if write_log:
@@ -164,6 +168,8 @@ def train():
   test_stats = []
 
   for tr_step in range(FLAGS.max_steps):
+       start_time = time.time()
+
        # Get next batch
        x_tr, y_tr = cifar10.train.next_batch(FLAGS.batch_size)
 
@@ -172,8 +178,8 @@ def train():
 
        # Run train step on training set
        if tr_step % FLAGS.print_freq == 0 and write_log:
-           #fetches += [summary_op]
-           _, tr_loss, tr_accuracy = sess.run(fetches = fetches, feed_dict = tr_feed)
+           fetches += [summary_op]
+           _, tr_loss, tr_accuracy, tr_summary = sess.run(fetches = fetches, feed_dict = tr_feed)
            train_log_writer.add_summary(tr_summary, tr_step)
        else:
            _, tr_loss, tr_accuracy = sess.run(fetches = fetches, feed_dict = tr_feed)
@@ -206,6 +212,9 @@ def train():
              _check_path(save_dir)
              saver.save(sess, save_path = os.path.join(save_dir, 'model.ckpt'))
 
+       final_time = time.time()
+       print("LOOP TIME: ", final_time - start_time)
+       
   # Once done with training, close writers
   if write_log:
         train_log_writer.close()
