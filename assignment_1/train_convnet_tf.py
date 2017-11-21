@@ -150,59 +150,66 @@ def train():
                     fill_mode = 'nearest',
                     data_format = 'channels_last')
 
-  cifar10_aug = aug_gen.flow(x = cifar10.train.images,
-                             y = cifar10.train.labels,
-                             batch_size = FLAGS.batch_size)
+  cifar10_aug =
 
   # Load test data once instead of every time
   x_test, y_test = cifar10.test.images, cifar10.test.labels
 
-
   tr_stats = []
   test_stats = []
 
-  for tr_step in range(FLAGS.max_steps):
-       # Get next batch
-       x_tr, y_tr = cifar10_aug.next()
+  tr_step = 0
 
-       tr_feed = {x: x_tr, y: y_tr, keep_prob: 1. - FLAGS.dropout_rate}
-       fetches = [train_op, loss_op, accuracy_op]
+  # for tr_step in range(FLAGS.max_steps):
+  for x_tr, y_tr in aug_gen.flow(x = cifar10.train.images, y = cifar10.train.labels, batch_size = FLAGS.batch_size):
 
-       # Run train step on training set
-       if tr_step % FLAGS.print_freq == 0 and write_log:
-           fetches += [summary_op]
-           _, tr_loss, tr_accuracy, tr_summary = sess.run(fetches = fetches, feed_dict = tr_feed)
-           train_log_writer.add_summary(tr_summary, tr_step)
+      if tf_step < FLAGS.max_steps:
+    #    # Get next batch
+    #    x_tr, y_tr = cifar10_aug.next()
+
+           tr_feed = {x: x_tr, y: y_tr, keep_prob: 1. - FLAGS.dropout_rate}
+           fetches = [train_op, loss_op, accuracy_op]
+
+           # Run train step on training set
+           if tr_step % FLAGS.print_freq == 0 and write_log:
+               fetches += [summary_op]
+               _, tr_loss, tr_accuracy, tr_summary = sess.run(fetches = fetches, feed_dict = tr_feed)
+               train_log_writer.add_summary(tr_summary, tr_step)
+           else:
+               _, tr_loss, tr_accuracy = sess.run(fetches = fetches, feed_dict = tr_feed)
+
+           tr_stats += [[tr_step , tr_loss, tr_accuracy]]
+
+           # Print statistics
+           if tr_step % FLAGS.print_freq == 0:
+               print('Step:{} Loss:{:.4f}, Accuracy:{:.4f}'.format(tr_step, tr_loss, tr_accuracy))
+
+           # Test set evaluation
+           if tr_step % FLAGS.eval_freq == 0 or tr_step == FLAGS.max_steps-1:
+               test_feed = {x: x_test, y: y_test, keep_prob: 1.0}
+               test_loss, test_accuracy, test_logits, test_confusion_matrix, test_summary = sess.run(
+                    fetches = [loss_op, accuracy_op, logits_op, conf_mat_op, summary_op],
+                    feed_dict = test_feed)
+               if write_log:
+                   test_log_writer.add_summary(test_summary, tr_step)
+
+               test_stats += [[tr_step, test_loss, test_accuracy]]
+
+               #print('TEST - Loss:{:.4f}, Accuracy:{:.4f}'.format(test_loss, test_accuracy))
+               #print('TEST - Conf Matrix \n {} \n'.format(test_confusion_matrix))
+
+           # Save checkpoint model
+           if tr_step % FLAGS.checkpoint_freq == 0 and  save_model:
+                 save_dir = os.path.join(FLAGS.checkpoint_dir, FLAGS.name)
+                 saver = tf.train.Saver()
+                 _check_path(save_dir)
+                 saver.save(sess, save_path = os.path.join(save_dir, 'model.ckpt'))
+
+           tr_step += 1
+
        else:
-           _, tr_loss, tr_accuracy = sess.run(fetches = fetches, feed_dict = tr_feed)
 
-       tr_stats += [[tr_step , tr_loss, tr_accuracy]]
-
-       # Print statistics
-       if tr_step % FLAGS.print_freq == 0:
-           print('Step:{} Loss:{:.4f}, Accuracy:{:.4f}'.format(tr_step, tr_loss, tr_accuracy))
-
-       # Test set evaluation
-       if tr_step % FLAGS.eval_freq == 0 or tr_step == FLAGS.max_steps-1:
-           test_feed = {x: x_test, y: y_test, keep_prob: 1.0}
-           test_loss, test_accuracy, test_logits, test_confusion_matrix, test_summary = sess.run(
-                fetches = [loss_op, accuracy_op, logits_op, conf_mat_op, summary_op],
-                feed_dict = test_feed)
-           if write_log:
-               test_log_writer.add_summary(test_summary, tr_step)
-
-           test_stats += [[tr_step, test_loss, test_accuracy]]
-
-           #print('TEST - Loss:{:.4f}, Accuracy:{:.4f}'.format(test_loss, test_accuracy))
-           #print('TEST - Conf Matrix \n {} \n'.format(test_confusion_matrix))
-
-       # Save checkpoint model
-       if tr_step % FLAGS.checkpoint_freq == 0 and  save_model:
-             save_dir = os.path.join(FLAGS.checkpoint_dir, FLAGS.name)
-             saver = tf.train.Saver()
-             _check_path(save_dir)
-             saver.save(sess, save_path = os.path.join(save_dir, 'model.ckpt'))
-
+           break
   # Once done with training, close writers
   if write_log:
         train_log_writer.close()
