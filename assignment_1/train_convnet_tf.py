@@ -150,8 +150,6 @@ def train():
                     fill_mode = 'nearest',
                     data_format = 'channels_last')
 
-  cifar10_aug =
-
   # Load test data once instead of every time
   x_test, y_test = cifar10.test.images, cifar10.test.labels
 
