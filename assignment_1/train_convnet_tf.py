@@ -126,13 +126,13 @@ def train():
   accuracy_op = conv_net.accuracy(logits_op, y)
   train_op = conv_net.train_step(loss_op, {'optimizer': optimizer, 'global_step': global_step})
   conf_mat_op = conv_net.confusion_matrix(logits_op, y)
-  #summary_op = tf.summary.merge_all()
+  summary_op = tf.summary.merge_all()
 
   save_model = FLAGS.checkpoint_dir is not None
   write_log = FLAGS.log_dir is not None
 
   save_model = False
-  write_log = False
+  #write_log = False
 
   # If enabled, set up log writers
   if write_log:
@@ -149,20 +149,19 @@ def train():
   local_init_op = tf.local_variables_initializer()
   sess.run(fetches=[init_op, local_init_op])
 
-  # aug_gen = tf.keras.preprocessing.image.ImageDataGenerator(
-  #                   rotation_range = 10,
-  #                   shear_range = 0.1,
-  #                   zoom_range = 0.1,
-  #                   fill_mode = 'nearest',
-  #                   data_format = 'channels_last')
-  #
-  # cifar10_aug = aug_gen.flow(x = cifar10.train.images,
-  #                            y = cifar10.train.labels,
-  #                            batch_size = FLAGS.batch_size)
+  img_generator = tf.keras.preprocessing.image.ImageDataGenerator(
+                    rotation_range = 10,
+                    shear_range = 0.1,
+                    zoom_range = 0.1,
+                    fill_mode = 'nearest',
+                    data_format = 'channels_last')
+
+  cifar10_augmented = img_generator.flow(x = cifar10.train.images,
+                             y = cifar10.train.labels,
+                             batch_size = FLAGS.batch_size)
 
   # Load test data once instead of every time
   #x_test, y_test = cifar10.test.images, cifar10.test.labels
-
 
   tr_stats = []
   test_stats = []
@@ -171,7 +170,7 @@ def train():
        start_time = time.time()
 
        # Get next batch
-       x_tr, y_tr = cifar10.train.next_batch(FLAGS.batch_size)
+       x_tr, y_tr = cifar10_augmented.next()
 
        tr_feed = {x: x_tr, y: y_tr, keep_prob: 1. - FLAGS.dropout_rate}
        fetches = [train_op, loss_op, accuracy_op]
@@ -192,10 +191,11 @@ def train():
 
        # Test set evaluation
        if tr_step % FLAGS.eval_freq == 0 or tr_step == FLAGS.max_steps-1:
-           x_test, y_test = cifar10.test.next_batch(FLAGS.batch_size)
+           #Use 2 batches to estimate test performance with less variance
+           x_test, y_test = cifar10.test.next_batch(2*FLAGS.batch_size)
            test_feed = {x: x_test, y: y_test, keep_prob: 1.0}
-           test_loss, test_accuracy, test_logits, test_confusion_matrix = sess.run(
-                fetches = [loss_op, accuracy_op, logits_op, conf_mat_op],
+           test_loss, test_accuracy, test_logits, test_summary, test_confusion_matrix = sess.run(
+                fetches = [loss_op, accuracy_op, logits_op, summary_op, conf_mat_op],
                 feed_dict = test_feed)
            if write_log:
                test_log_writer.add_summary(test_summary, tr_step)
@@ -234,6 +234,12 @@ def train():
   ########################
   # END OF YOUR CODE    #
   ########################
+
+def data_augmentation_fn(im_batch):
+    aug_batch = tf.map_fn(lambda img: tf.image.random_flip_left_right(img), im_batch)
+    aug_batch = tf.map_fn(lambda img: tf.image.random_brightness(img, max_delta=0.1), aug_batch)
+    aug_batch = tf.map_fn(lambda img: tf.image.random_contrast(img, lower=0.9, upper=1.1), aug_batch)
+    return aug_batch
 
 def _check_path(path):
     """
@@ -305,6 +311,9 @@ if __name__ == '__main__':
                       help='Regularizer type for weights of fully-connected layers [none, l1, l2].')
   parser.add_argument('--weight_reg_strength', type = float, default = WEIGHT_REGULARIZER_STRENGTH_DEFAULT,
                       help='Regularizer strength for weights of fully-connected layers.')
+
+  parser.add_argument('--data_augmentation', type = bool, default = False,
+                    help='Use data augmentation.')
 
   parser.add_argument('--name', type = str, default = NAME_DEFAULT,
                       help = 'Model name for future reference')

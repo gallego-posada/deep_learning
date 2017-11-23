@@ -182,8 +182,8 @@ def train():
 
        tr_stats += [[tr_step , tr_loss, tr_accuracy]]
        # Print statistics
-    #    if tr_step % 50 == 0:
-    #        print('Step:{} Loss:{:.4f}, Accuracy:{:.4f}'.format(tr_step, tr_loss, tr_accuracy))
+       if tr_step % 50 == 0:
+           print('Step:{} Loss:{:.4f}, Accuracy:{:.4f}'.format(tr_step, tr_loss, tr_accuracy))
 
        # Test set evaluation
        if tr_step % 100 == 0 or tr_step == FLAGS.max_steps-1:
@@ -196,7 +196,7 @@ def train():
 
            test_stats += [[tr_step, test_loss, test_accuracy]]
 
-           #print('TEST - Loss:{:.4f}, Accuracy:{:.4f}'.format(test_loss, test_accuracy))
+           print('TEST - Loss:{:.4f}, Accuracy:{:.4f}'.format(test_loss, test_accuracy))
            #print('TEST - Conf Matrix \n {} \n'.format(test_confusion_matrix))
 
   # Once done with training, close writers

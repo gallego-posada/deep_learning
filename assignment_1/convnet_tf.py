@@ -117,7 +117,7 @@ class ConvNet(object):
 
           with tf.name_scope('dropout'):
               output = tf.nn.dropout(activs, keep_prob)
-              tf.summary.histogram('output', output)
+              #tf.summary.histogram('output', output)
 
       return output
 
