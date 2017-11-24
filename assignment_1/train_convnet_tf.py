@@ -26,6 +26,7 @@ WEIGHT_INITIALIZATION_SCALE_DEFAULT = 1e-4
 DROPOUT_RATE_DEFAULT = 0.0
 WEIGHT_INITIALIZATION_DEFAULT = 'normal'
 WEIGHT_REGULARIZER_DEFAULT = 'l2'
+DATA_AUGMENTATION_DEFAULT = False
 
 # Default model name
 NAME_DEFAULT = 'convnet'
@@ -149,16 +150,17 @@ def train():
   local_init_op = tf.local_variables_initializer()
   sess.run(fetches=[init_op, local_init_op])
 
-  img_generator = tf.keras.preprocessing.image.ImageDataGenerator(
-                    rotation_range = 10,
-                    shear_range = 0.1,
-                    zoom_range = 0.1,
-                    fill_mode = 'nearest',
-                    data_format = 'channels_last')
+  if FLAGS.data_augmentation:
+      img_generator = tf.keras.preprocessing.image.ImageDataGenerator(
+                        rotation_range = 10,
+                        shear_range = 0.1,
+                        zoom_range = 0.1,
+                        fill_mode = 'nearest',
+                        data_format = 'channels_last')
 
-  cifar10_augmented = img_generator.flow(x = cifar10.train.images,
-                             y = cifar10.train.labels,
-                             batch_size = FLAGS.batch_size)
+      cifar10_augmented = img_generator.flow(x = cifar10.train.images,
+                                 y = cifar10.train.labels,
+                                 batch_size = FLAGS.batch_size)
 
   # Load test data once instead of every time
   #x_test, y_test = cifar10.test.images, cifar10.test.labels
@@ -170,7 +172,10 @@ def train():
        start_time = time.time()
 
        # Get next batch
-       x_tr, y_tr = cifar10_augmented.next()
+       if FLAGS.data_augmentation:
+           x_tr, y_tr = cifar10_augmented.next()
+       else:
+           x_tr, y_tr = cifar10.train.next_batch(FLAGS.batch_size)
 
        tr_feed = {x: x_tr, y: y_tr, keep_prob: 1. - FLAGS.dropout_rate}
        fetches = [train_op, loss_op, accuracy_op]
@@ -312,7 +317,7 @@ if __name__ == '__main__':
   parser.add_argument('--weight_reg_strength', type = float, default = WEIGHT_REGULARIZER_STRENGTH_DEFAULT,
                       help='Regularizer strength for weights of fully-connected layers.')
 
-  parser.add_argument('--data_augmentation', type = bool, default = False,
+  parser.add_argument('--data_augmentation', type = bool, default = DATA_AUGMENTATION_DEFAULT,
                     help='Use data augmentation.')
 
   parser.add_argument('--name', type = str, default = NAME_DEFAULT,
