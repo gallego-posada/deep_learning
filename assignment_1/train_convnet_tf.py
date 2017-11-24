@@ -132,9 +132,6 @@ def train():
   save_model = FLAGS.checkpoint_dir is not None
   write_log = FLAGS.log_dir is not None
 
-  save_model = False
-  #write_log = False
-
   # If enabled, set up log writers
   if write_log:
     train_log_path = os.path.join(FLAGS.log_dir, '{}_train'.format(FLAGS.name))
@@ -162,14 +159,10 @@ def train():
                                  y = cifar10.train.labels,
                                  batch_size = FLAGS.batch_size)
 
-  # Load test data once instead of every time
-  #x_test, y_test = cifar10.test.images, cifar10.test.labels
-
   tr_stats = []
   test_stats = []
 
   for tr_step in range(FLAGS.max_steps):
-       start_time = time.time()
 
        # Get next batch
        if FLAGS.data_augmentation:
@@ -196,8 +189,8 @@ def train():
 
        # Test set evaluation
        if tr_step % FLAGS.eval_freq == 0 or tr_step == FLAGS.max_steps-1:
-           #Use 2 batches to estimate test performance with less variance
-           x_test, y_test = cifar10.test.next_batch(2*FLAGS.batch_size)
+           #Use 10 batches to estimate test performance with less variance
+           x_test, y_test = cifar10.test.next_batch(10*FLAGS.batch_size)
            test_feed = {x: x_test, y: y_test, keep_prob: 1.0}
            test_loss, test_accuracy, test_logits, test_summary, test_confusion_matrix = sess.run(
                 fetches = [loss_op, accuracy_op, logits_op, summary_op, conf_mat_op],
@@ -217,8 +210,6 @@ def train():
              _check_path(save_dir)
              saver.save(sess, save_path = os.path.join(save_dir, 'model.ckpt'))
 
-       final_time = time.time()
-       print("LOOP TIME: ", final_time - start_time)
 
   # Once done with training, close writers
   if write_log:
@@ -239,12 +230,6 @@ def train():
   ########################
   # END OF YOUR CODE    #
   ########################
-
-def data_augmentation_fn(im_batch):
-    aug_batch = tf.map_fn(lambda img: tf.image.random_flip_left_right(img), im_batch)
-    aug_batch = tf.map_fn(lambda img: tf.image.random_brightness(img, max_delta=0.1), aug_batch)
-    aug_batch = tf.map_fn(lambda img: tf.image.random_contrast(img, lower=0.9, upper=1.1), aug_batch)
-    return aug_batch
 
 def _check_path(path):
     """
