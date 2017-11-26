@@ -16,7 +16,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-#import numpy as np
 import tensorflow as tf
 
 ################################################################################
@@ -48,7 +47,10 @@ class VanillaRNN(object):
         self._accuracy = self.accuracy()
 
     def _rnn_step(self, h_prev, x):
-        # Single step through Vanilla RNN cell ...
+        """
+        Single step through Vanilla RNN cell
+        """
+
         with tf.variable_scope('rnn_step'):
 
             Whh = tf.get_variable(name='Whh',
@@ -81,7 +83,10 @@ class VanillaRNN(object):
         return states
 
     def compute_logits(self):
-        # Implement the logits for predicting the last digit in the palindrome
+        """
+        Implement the logits for predicting the last digit in the palindrome
+        """
+
         states = self._get_hidden_states()
         states = states[-1, :, :]
 
@@ -100,7 +105,9 @@ class VanillaRNN(object):
         return logits
 
     def compute_loss(self):
-        # Implement the cross-entropy loss for classification of the last digit
+        """
+        Implement the cross-entropy loss for classification of the last digit
+        """
 
         with tf.variable_scope("loss"):
             loss = tf.nn.softmax_cross_entropy_with_logits(labels=self._targets,
@@ -111,8 +118,9 @@ class VanillaRNN(object):
         return loss
 
     def accuracy(self):
-        # Implement the accuracy of predicting the
-        # last digit over the current batch ...
+        """
+        Implement the accuracy of predicting the last digit over the current batch
+        """
         with tf.variable_scope("accuracy"):
             pred_class = tf.argmax(input=self._logits, axis=1)
             true_class = tf.argmax(input=self._targets, axis=1)

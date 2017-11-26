@@ -21,6 +21,7 @@ import argparse
 import time
 from datetime import datetime
 
+import os
 import numpy as np
 import tensorflow as tf
 
@@ -28,8 +29,8 @@ import utils
 from vanilla_rnn import VanillaRNN
 from lstm import LSTM
 
-################################################################################
 
+################################################################################
 def dense_to_one_hot(labels_dense, num_classes):
     """
     Convert class labels from scalars to one-hot vectors.
@@ -47,9 +48,17 @@ def dense_to_one_hot(labels_dense, num_classes):
     labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
     return labels_one_hot
 
-def train(config):
+def _check_path(path):
+    """
+    Makes sure path for log and model saving exists
+    """
+    if not tf.gfile.Exists(path):
+        tf.gfile.MakeDirs(path)
 
+def train(config):
     assert config.model_type in ('RNN', 'LSTM')
+
+    tf.reset_default_graph()
 
     # Setup the model that we are going to use
     if config.model_type == 'RNN':
@@ -92,8 +101,9 @@ def train(config):
     ###########################################################################
     grads_and_vars = optimizer.compute_gradients(model._loss)
     grads, variables = zip(*grads_and_vars)
-    grads_clipped, _ = tf.clip_by_global_norm(grads, clip_norm = config.max_norm_gradient)
-    apply_gradients_op = optimizer.apply_gradients(zip(grads_clipped, variables), global_step = global_step)
+    grads_clipped, _ = tf.clip_by_global_norm(grads, clip_norm=config.max_norm_gradient)
+    apply_gradients_op = optimizer.apply_gradients(zip(grads_clipped, variables),
+                                                   global_step=global_step)
     ############################################################################
 
     init_op = tf.global_variables_initializer()
@@ -104,6 +114,10 @@ def train(config):
     # Implement code here.
     ###########################################################################
 
+    train_log_path = os.path.join(config.summary_path, '{}'.format(config.name))
+    _check_path(train_log_path)
+    train_log_writer = tf.summary.FileWriter(train_log_path, graph=sess.graph)
+
     palindrome_length = config.input_length
 
     for train_step in range(config.train_steps):
@@ -112,16 +126,21 @@ def train(config):
         t1 = time.time()
 
         palindrome_batch = utils.generate_palindrome_batch(config.batch_size, palindrome_length)
-        x_dense = palindrome_batch[:,:-1]
-        y_dense = palindrome_batch[:,-1]
+        x_dense = palindrome_batch[:, :-1]
+        y_dense = palindrome_batch[:, -1]
 
-        x = np.transpose((np.arange(model._num_classes) == x_dense[...,None]).astype(int), [1, 0, 2])
+        x = np.transpose((np.arange(model._num_classes) == x_dense[..., None]).astype(int), [1, 0, 2])
         y = (np.arange(model._num_classes) == y_dense[..., None]).astype(int)
 
         tr_feed = {model._inputs: x, model._targets: y}
         fetches = [apply_gradients_op, model._loss, model._accuracy]
 
-        _, train_loss, train_accuracy = sess.run(fetches=fetches, feed_dict=tr_feed)
+        if train_step % config.print_every == 0:
+            fetches += [summary_op]
+            _, train_loss, train_accuracy, train_summary = sess.run(fetches = fetches, feed_dict = tr_feed)
+            train_log_writer.add_summary(train_summary, train_step)
+        else:
+            _, train_loss, train_accuracy, = sess.run(fetches = fetches, feed_dict = tr_feed)
 
         # Only for time measurement of step through network
         t2 = time.time()
@@ -131,11 +150,11 @@ def train(config):
         if train_step % config.print_every == 0:
             print("[{}] Train Step {:04d}/{:04d}, Batch Size = {}, "
                   "Examples/Sec = {:.2f}, Accuracy = {:.3f}, Loss = {:.4f}".format(
-                  datetime.now().strftime("%Y-%m-%d %H:%M"), train_step,
-                  config.train_steps, config.batch_size, examples_per_second,
-                  train_accuracy, train_loss))
+                      datetime.now().strftime("%Y-%m-%d %H:%M"), train_step,
+                      config.train_steps, config.batch_size, examples_per_second,
+                      train_accuracy, train_loss))
 
-
+    train_log_writer.close()
 if __name__ == "__main__":
 
     # Parse training configuration
@@ -159,6 +178,7 @@ if __name__ == "__main__":
     parser.add_argument('--print_every', type=int, default=5, help='How often to print training progress')
 
     parser.add_argument('--optimizer', type=str, default="adam", help='Optimizer to use')
+    parser.add_argument('--name', type=str, default="recurrent", help='Model name')
 
     config = parser.parse_args()
 
