@@ -1,7 +1,7 @@
 # MIT License
 #
 # Copyright (c) 2017 Tom Runia
-#
+
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -44,76 +44,80 @@ class LSTM(object):
                                        shape=[self._batch_size, self._num_classes],
                                        name='targets')
 
-        with tf.variable_scope('lstm_cell') as scope:
+        with tf.variable_scope('lstm_cell'):
+            Wg = tf.get_variable(name="Wg",
+                                 shape=[self._input_dim + self._num_hidden, self._num_hidden],
+                                 dtype=tf.float32,
+                                 initializer=self._weight_initializer)
+            Wi = tf.get_variable(name="Wi",
+                                 shape=[self._input_dim + self._num_hidden, self._num_hidden],
+                                 dtype=tf.float32,
+                                 initializer=self._weight_initializer)
+            Wf = tf.get_variable(name="Wf",
+                                 shape=[self._input_dim + self._num_hidden, self._num_hidden],
+                                 dtype=tf.float32,
+                                 initializer=self._weight_initializer)
+            Wo = tf.get_variable(name="Wo",
+                                 shape=[self._input_dim + self._num_hidden, self._num_hidden],
+                                 dtype=tf.float32,
+                                 initializer=self._weight_initializer)
 
-            Wg = self._get_weight_var('Wg', self._input_dim + self._num_hidden, self._num_hidden, scope)
-            Wi = self._get_weight_var('Wi', self._input_dim + self._num_hidden, self._num_hidden, scope)
-            Wf = self._get_weight_var('Wf', self._input_dim + self._num_hidden, self._num_hidden, scope)
-            Wo = self._get_weight_var('Wo', self._input_dim + self._num_hidden, self._num_hidden, scope)
-
-            bg = self._get_bias_var('bg', self._num_hidden, scope)
-            bi = self._get_bias_var('bi', self._num_hidden, scope)
-            bf = self._get_bias_var('bf', self._num_hidden, scope)
-            bo = self._get_bias_var('bo', self._num_hidden, scope)
+            bg = tf.get_variable(name="bg", shape=[self._num_hidden],
+                                 dtype=tf.float32, initializer=self._weight_initializer)
+            bi = tf.get_variable(name="bi", shape=[self._num_hidden],
+                                 dtype=tf.float32, initializer=self._weight_initializer)
+            bf = tf.get_variable(name="bf", shape=[self._num_hidden],
+                                 dtype=tf.float32, initializer=self._weight_initializer)
+            bo = tf.get_variable(name="bo", shape=[self._num_hidden],
+                                 dtype=tf.float32, initializer=self._weight_initializer)
 
             self._W = tf.concat([Wg, Wi, Wf, Wo], axis=1)
             self._b = tf.concat([bg, bi, bf, bo], axis=0)
 
+        with tf.variable_scope("logits"):
+            self._Woh = tf.get_variable(name='Woh',
+                                        shape=[self._num_hidden, self._num_classes],
+                                        dtype=tf.float32,
+                                        initializer=self._weight_initializer)
+
+            self._bo = tf.get_variable(name='bo',
+                                       shape=[self._num_classes],
+                                       dtype=tf.float32,
+                                       initializer=self._bias_initializer)
+
         self._logits = self.compute_logits()
         self._loss = self.compute_loss()
         self._accuracy = self.accuracy()
-
-
-    def _get_weight_var(self, name, in_dim, out_dim, scope):
-        with tf.variable_scope(scope):
-            return tf.get_variable(name=name,
-                                   shape=[in_dim, out_dim],
-                                   dtype=tf.float32,
-                                   initializer=self._weight_initializer)
-
-    def _get_bias_var(self, name, dim, scope):
-        with tf.variable_scope(scope):
-            return tf.get_variable(name=name,
-                                   shape=[dim],
-                                   dtype=tf.float32,
-                                   initializer=self._weight_initializer)
 
     def _lstm_step(self, lstm_state_tuple, x):
         """
         Single step through LSTM cell
         """
 
-        (c_prev, h_prev) = tf.unstack(lstm_state_tuple, axis=2)
+        (c_prev, h_prev) = tf.unstack(lstm_state_tuple, axis=0)
         x_and_h = tf.concat([x, h_prev], axis=1)
 
-        with tf.variable_scope("lstm_cell"):
+        # Execute big matmul for efficiency. See notation in section 3.1 in
+        # (Zaremba, 2015) https://arxiv.org/pdf/1409.2329.pdf
+        preact = tf.add(tf.matmul(x_and_h, self._W), self._b, name='preact')
 
-            # Execute big matmul for efficiency. See notation in section 3.1 in
-            # (Zaremba, 2015) https://arxiv.org/pdf/1409.2329.pdf
-            mmul = tf.matmul(x_and_h, self._W)
-            preact = tf.add(mmul, self._b, name='preact')
+        # Split tensor into the four vector components
+        g, i, f, o = tf.split(preact, num_or_size_splits=4, axis=1)
 
-            # Split tensor into the four vector components
-            g, i, f, o = tf.split(preact, num_or_size_splits=4, axis=1)
+        # Calculate new cell and hidden states
+        c = tf.tanh(g) * tf.sigmoid(i) + c_prev * tf.sigmoid(f)
+        h = tf.tanh(c) * tf.sigmoid(o)
 
-            # Apply non linearities
-            g = tf.tanh(g)
-            i = tf.sigmoid(i)
-            f = tf.sigmoid(f)
-            o = tf.sigmoid(o)
-
-            # Calculate new cell and hidden states
-            c = g * i + c_prev * f
-            h = tf.tanh(c) * o
-
-        return tf.stack([c, h], axis=2)
+        return tf.stack([c, h], axis=0)
 
     def _get_hidden_states(self):
         with tf.variable_scope('hidden_states'):
-            initial_state = tf.zeros([self._batch_size, self._num_hidden], name='initial_state')
-            initial_state = tf.stack([initial_state, initial_state], axis=2)
-            states = tf.scan(self._lstm_step, self._inputs,
-                             initializer=initial_state, name='hidden_states')
+            initial_state = tf.zeros([2, self._batch_size, self._num_hidden], name='initial_state')
+            #states = tf.scan(fn=lambda lstm_state_tuple, x: self._lstm_step(lstm_state_tuple=lstm_state_tuple, x=x),
+            states = tf.scan(fn=self._lstm_step,
+                             elems=self._inputs,
+                             initializer=initial_state,
+                             name='hidden_states')
         return states
 
     def compute_logits(self):
@@ -126,20 +130,9 @@ class LSTM(object):
         # Keep only last time step
         states = states[-1, ...]
         # Separate cell and hidden states
-        (_, h) = tf.unstack(states, axis=2)
+        (_, h) = tf.unstack(states, axis=0)
 
-        with tf.variable_scope("logits"):
-            Woh = tf.get_variable(name='Woh',
-                                  shape=[self._num_hidden, self._num_classes],
-                                  dtype=tf.float32,
-                                  initializer=self._weight_initializer)
-
-            bo = tf.get_variable(name='bo',
-                                 shape=[self._num_classes],
-                                 dtype=tf.float32,
-                                 initializer=self._bias_initializer)
-
-            logits = tf.add(tf.matmul(h, Woh), bo, name="logits")
+        logits = tf.add(tf.matmul(h, self._Woh), self._bo, name="logits")
         return logits
 
     def compute_loss(self):

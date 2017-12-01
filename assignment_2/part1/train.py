@@ -29,6 +29,7 @@ import utils
 from vanilla_rnn import VanillaRNN
 from lstm import LSTM
 
+from tensorflow.python import debug as tf_debug
 
 ################################################################################
 def dense_to_one_hot(labels_dense, num_classes):
@@ -56,6 +57,10 @@ def _check_path(path):
         tf.gfile.MakeDirs(path)
 
 def train(config):
+
+    tf.set_random_seed(42)
+    np.random.seed(42)
+
     assert config.model_type in ('RNN', 'LSTM')
 
     tf.reset_default_graph()
@@ -79,6 +84,7 @@ def train(config):
     ###########################################################################
 
     sess = tf.Session()
+    #sess = tf_debug.LocalCLIDebugWrapperSession(sess)
 
     # Setup global step
     global_step = tf.Variable(0, trainable=False, name='global_step')
