@@ -8,6 +8,10 @@ assignment_1/cifar10/cifar-10-batches-py
 assignment_1/saved_models
 assignment_1/checkpoints
 assignment_1/pickles
+assignment_2/part1/results
+assignment_2/part2/results
+assignment_2/part2/books
+assignment_3/figs
 
 # C extensions
 *.so
